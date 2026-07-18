@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choke Rate Calculator — Flowback / Well Test</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10161A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Choke Calc">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10161A;
+    --bg-grain:#141B20;
+    --panel:#1B2328;
+    --panel-raised:#212B31;
+    --panel-inset:#161D22;
+    --brass:#E8A33D;
+    --brass-dim:#9C7233;
+    --brass-glow: rgba(232,163,61,0.35);
+    --alert:#D0501B;
+    --alert-glow: rgba(208,80,27,0.45);
+    --ok:#4C9A6A;
+    --ok-glow: rgba(76,154,106,0.45);
+    --text:#EDE6D6;
+    --text-muted:#82909A;
+    --text-faint:#4B5860;
+    --border:#2C383F;
+    --border-light:#3A4750;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top left, rgba(232,163,61,0.05), transparent 45%),
+      radial-gradient(ellipse at bottom right, rgba(76,154,106,0.04), transparent 50%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding:28px 18px 60px;
+  }
+  .wrap{max-width:1180px; margin:0 auto;}
+
+  /* ---------- Nameplate header ---------- */
+  .nameplate{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:2px solid var(--border-light);
+    padding-bottom:18px; margin-bottom:26px;
+    flex-wrap:wrap; gap:14px;
+  }
+  .nameplate-left{display:flex; align-items:center; gap:14px;}
+  .rivet-badge{
+    width:46px; height:46px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #3a4750, #1a2126 70%);
+    border:1px solid var(--border-light);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.5), inset 0 -1px 1px rgba(255,255,255,0.05);
+    flex-shrink:0;
+  }
+  .rivet-badge svg{width:24px; height:24px;}
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    margin:0;
+    color:var(--text);
+  }
+  .subtitle{
+    font-size:12px;
+    color:var(--text-muted);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-top:4px;
+  }
+  .meta-tags{
+    display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+  }
+  .meta-tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--brass-dim);
+    border:1px solid var(--border-light);
+    padding:4px 9px;
+    border-radius:3px;
+    letter-spacing:0.05em;
+    background:var(--panel-inset);
+  }
+
+  /* ---------- Mode toggle ---------- */
+  .mode-toggle{
+    display:flex; gap:2px; background:var(--panel-inset);
+    border:1px solid var(--border); border-radius:8px; padding:3px;
+    margin-bottom:22px; max-width:520px;
+  }
+  .mode-btn{
+    flex:1; padding:11px 14px; border:none; border-radius:6px;
+    background:transparent; color:var(--text-muted);
+    font-family:'Oswald', sans-serif; font-size:13px; letter-spacing:0.03em;
+    text-transform:uppercase; cursor:pointer; transition:all 0.2s ease;
+  }
+  .mode-btn.active{
+    background:linear-gradient(180deg, #2a353c, #212b31);
+    color:var(--brass);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  /* ---------- Grid layout ---------- */
+  .grid{
+    display:grid; grid-template-columns: 1.05fr 0.95fr; gap:22px;
+  }
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:22px;
+    position:relative;
+  }
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:12px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    pointer-events:none;
+  }
+  .panel-label{
+    font-family:'Oswald', sans-serif;
+    font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--text-faint); margin-bottom:18px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .panel-label::after{
+    content:""; flex:1; height:1px; background:var(--border);
+  }
+
+  .field-group{margin-bottom:20px;}
+  .field-group:last-child{margin-bottom:0;}
+  .field-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:8px;
+  }
+  label{
+    font-size:12.5px; color:var(--text-muted);
+    letter-spacing:0.03em; text-transform:uppercase;
+    font-weight:500;
+  }
+  .field-value{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--brass); font-size:14px; font-weight:500;
+  }
+  input[type="number"]{
+    width:100%;
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text);
+    font-family:'JetBrains Mono', monospace;
+    font-size:15px;
+    padding:10px 12px;
+    outline:none;
+    transition:border-color 0.15s ease;
+  }
+  input[type="number"]:focus{border-color:var(--brass-dim);}
+  input[type="range"]{
+    width:100%; -webkit-appearance:none; appearance:none;
+    height:4px; border-radius:2px; background:var(--border-light);
+    margin-top:10px; outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:16px; height:16px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #f5c778, var(--brass));
+    border:2px solid #7a5a22;
+    cursor:pointer;
+    box-shadow:0 0 0 4px rgba(232,163,61,0.12);
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:16px; height:16px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #f5c778, var(--brass));
+    border:2px solid #7a5a22; cursor:pointer;
+  }
+  select{
+    width:100%;
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    font-size:13.5px;
+    padding:10px 12px;
+    outline:none;
+    cursor:pointer;
+  }
+  .hint{font-size:11.5px; color:var(--text-faint); margin-top:6px; line-height:1.5;}
+
+  /* ---------- Aperture (signature element) ---------- */
+  .aperture-wrap{
+    display:flex; align-items:center; gap:20px;
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-top:6px;
+  }
+  .aperture-svg{flex-shrink:0;}
+  .aperture-readout{flex:1;}
+  .aperture-readout .big{
+    font-family:'JetBrains Mono', monospace;
+    font-size:26px; color:var(--brass); font-weight:700; line-height:1;
+  }
+  .aperture-readout .small{
+    font-size:11px; color:var(--text-faint); text-transform:uppercase;
+    letter-spacing:0.08em; margin-top:5px;
+  }
+
+  /* ---------- Pressure ratio bar ---------- */
+  .ratio-bar-track{
+    width:100%; height:8px; border-radius:4px;
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    overflow:hidden;
+    margin-top:10px;
+    position:relative;
+  }
+  .ratio-bar-fill{
+    height:100%; border-radius:4px;
+    transition: width 0.25s ease, background 0.25s ease;
+  }
+  .ratio-threshold-mark{
+    position:absolute; top:-3px; bottom:-3px; width:2px;
+    background:var(--text-faint);
+  }
+
+  /* ---------- Output panel ---------- */
+  .status-strip{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px;
+    border-radius:8px;
+    margin-bottom:20px;
+    border:1px solid var(--border);
+    background:var(--panel-inset);
+  }
+  .status-light{
+    width:11px; height:11px; border-radius:50%;
+    flex-shrink:0;
+    box-shadow:0 0 8px 2px currentColor;
+  }
+  .status-light.ok{background:var(--ok); color:var(--ok-glow);}
+  .status-light.warn{background:var(--alert); color:var(--alert-glow);}
+  .status-text{font-size:12.5px; color:var(--text-muted); line-height:1.4;}
+  .status-text strong{color:var(--text); font-weight:600;}
+
+  .readout-main{
+    text-align:center;
+    padding:26px 10px 22px;
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:10px;
+    margin-bottom:16px;
+  }
+  .readout-main .value{
+    font-family:'JetBrains Mono', monospace;
+    font-size:56px; font-weight:700;
+    color:var(--brass);
+    text-shadow:0 0 22px var(--brass-glow);
+    line-height:1;
+    letter-spacing:-0.01em;
+  }
+  .readout-main .unit{
+    font-size:13px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.1em;
+    margin-top:10px;
+  }
+
+  .readout-secondary{
+    display:grid; grid-template-columns:1fr 1fr; gap:12px;
+    margin-bottom:20px;
+  }
+  .readout-chip{
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 14px;
+  }
+  .readout-chip .val{
+    font-family:'JetBrains Mono', monospace;
+    font-size:19px; color:var(--text); font-weight:500;
+  }
+  .readout-chip .lbl{
+    font-size:10.5px; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:0.08em; margin-top:4px;
+  }
+
+  .formula-box{
+    border-top:1px solid var(--border);
+    padding-top:16px; margin-top:4px;
+  }
+  .formula-box .fl{
+    font-size:10.5px; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;
+  }
+  .formula-box code{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; color:var(--text-muted);
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px 12px;
+    line-height:1.6;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  footer{
+    max-width:1180px; margin:26px auto 0;
+    font-size:11px; color:var(--text-faint); line-height:1.6;
+    border-top:1px solid var(--border); padding-top:16px;
+  }
+
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:520px){ .two-col{grid-template-columns:1fr;} }
+  .preset-row{
+    display:flex; flex-wrap:wrap; gap:6px;
+    margin-top:10px;
+  }
+  .preset-btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; color:var(--text-muted);
+    background:var(--panel-inset);
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:5px 9px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .preset-btn:hover{border-color:var(--brass-dim); color:var(--brass);}
+  .preset-btn.active{
+    background:linear-gradient(180deg, #2a353c, #212b31);
+    border-color:var(--brass-dim); color:var(--brass);
+  }
+
+  .switch{position:relative; display:inline-block; width:40px; height:22px;}
+  .switch input{opacity:0; width:0; height:0;}
+  .switch-track{
+    position:absolute; cursor:pointer; inset:0;
+    background:var(--panel-inset); border:1px solid var(--border);
+    border-radius:20px; transition:0.2s;
+  }
+  .switch-thumb{
+    position:absolute; height:14px; width:14px; left:3px; top:3px;
+    background:var(--text-faint); border-radius:50%; transition:0.2s;
+  }
+  .switch input:checked + .switch-track{border-color:var(--brass-dim); background:rgba(232,163,61,0.12);}
+  .switch input:checked + .switch-track .switch-thumb{
+    transform:translateX(18px); background:var(--brass);
+    box-shadow:0 0 6px var(--brass-glow);
+  }
+
+  .stage-readout{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--panel-inset); border:1px solid var(--border);
+    border-radius:8px; padding:10px 14px; margin-bottom:16px;
+  }
+  .stage-readout .lbl{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.08em;}
+  .stage-readout .val{font-family:'JetBrains Mono', monospace; font-size:16px; color:var(--brass);}
+
+  .solved-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px; color:var(--brass);
+    background:rgba(232,163,61,0.12);
+    border:1px solid var(--brass-dim);
+    border-radius:4px;
+    padding:2px 6px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    margin-left:8px;
+  }
+  .locked input[type="range"]{opacity:0.35; pointer-events:none;}
+  .locked .preset-row{opacity:0.35; pointer-events:none;}
+  .locked .aperture-wrap{opacity:0.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="nameplate">
+    <div class="nameplate-left">
+      <div class="rivet-badge">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#E8A33D" stroke-width="1.4"/><circle cx="12" cy="12" r="3" fill="#E8A33D"/></svg>
+      </div>
+      <div>
+        <h1>Choke Rate Calculator</h1>
+        <div class="subtitle">Flowback &amp; Well Test · bbl/min</div>
+      </div>
+    </div>
+    <div class="meta-tags">
+      <span class="meta-tag" id="tag-mode">MULTIPHASE</span>
+      <span class="meta-tag" id="tag-formula">GILBERT 1954</span>
+    </div>
+  </div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btn-multiphase">Multiphase · Choke Correlation</button>
+    <button class="mode-btn" id="btn-singlephase">Single-Phase Liquid · Orifice</button>
+  </div>
+
+  <div class="mode-toggle" id="solveToggle" style="max-width:340px;">
+    <button class="mode-btn active" id="btn-solve-rate">Solve rate</button>
+    <button class="mode-btn" id="btn-solve-size">Solve bean size</button>
+  </div>
+
+  <div class="grid">
+    <!-- INPUT PANEL -->
+    <div class="panel">
+      <div class="panel-label">Choke</div>
+
+      <div class="field-group" id="targetRateGroup" style="display:none;">
+        <div class="field-row">
+          <label for="targetRate">Target rate</label>
+          <span class="field-value"><span id="targetRateVal">5.1</span> bbl/min</span>
+        </div>
+        <input type="number" id="targetRate" value="5.1" min="0" step="0.1">
+        <div class="hint">What you want the return rate to be. The calculator solves for the bean size that gets you there at the pressures below.</div>
+      </div>
+
+      <div class="field-group" id="chokeSizeGroup">
+        <div class="field-row">
+          <label for="chokeSize">Bean / seat size</label>
+          <span class="field-value"><span id="chokeSizeVal">32</span>/64″<span class="solved-badge" id="chokeSizeSolvedBadge" style="display:none;">solved</span></span>
+        </div>
+        <input type="range" id="chokeSize" min="4" max="128" step="1" value="32">
+        <div class="preset-row" id="presetRow">
+          <button type="button" class="preset-btn" data-size="16">1/4″</button>
+          <button type="button" class="preset-btn" data-size="24">3/8″</button>
+          <button type="button" class="preset-btn" data-size="32">1/2″</button>
+          <button type="button" class="preset-btn" data-size="40">5/8″</button>
+          <button type="button" class="preset-btn" data-size="48">3/4″</button>
+          <button type="button" class="preset-btn" data-size="56">7/8″</button>
+          <button type="button" class="preset-btn" data-size="64">1″</button>
+          <button type="button" class="preset-btn" data-size="96">1-1/2″</button>
+        </div>
+        <div class="aperture-wrap">
+          <svg class="aperture-svg" id="apertureSvg" width="72" height="72" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="33" fill="none" stroke="#3A4750" stroke-width="2"/>
+            <circle cx="36" cy="36" r="26" fill="#161D22" stroke="#2C383F" stroke-width="1"/>
+            <circle id="apertureHole" cx="36" cy="36" r="12" fill="#0C1013" stroke="#E8A33D" stroke-width="1.5"/>
+          </svg>
+          <div class="aperture-readout">
+            <div class="big" id="chokeSizeInches">0.500″</div>
+            <div class="small" id="apertureCaption">bore diameter</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group" id="doubleDropToggleGroup">
+        <div class="field-row">
+          <label for="doubleDropCheck" style="cursor:pointer;">Double drop (staged chokes)</label>
+          <label class="switch">
+            <input type="checkbox" id="doubleDropCheck">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="hint">Two chokes in series to split the pressure drop across two beans instead of one. Rate is set by whichever stage is actually the tighter restriction once flow is balanced — this tool solves for that, it isn't a 50/50 guess.</div>
+      </div>
+
+      <div class="field-group" id="solveTargetGroup" style="display:none;">
+        <div class="field-row"><label for="solveTarget">Solve for</label></div>
+        <select id="solveTarget">
+          <option value="front">Front bean (I know the rear)</option>
+          <option value="rear">Rear bean (I know the front)</option>
+        </select>
+      </div>
+
+      <div class="field-group" id="choke2Group" style="display:none;">
+        <div class="field-row">
+          <label for="chokeSize2">2nd stage bean size</label>
+          <span class="field-value"><span id="chokeSize2Val">48</span>/64″<span class="solved-badge" id="chokeSize2SolvedBadge" style="display:none;">solved</span></span>
+        </div>
+        <input type="range" id="chokeSize2" min="4" max="128" step="1" value="48">
+        <div class="preset-row" id="presetRow2">
+          <button type="button" class="preset-btn" data-size2="32">1/2″</button>
+          <button type="button" class="preset-btn" data-size2="40">5/8″</button>
+          <button type="button" class="preset-btn" data-size2="48">3/4″</button>
+          <button type="button" class="preset-btn" data-size2="56">7/8″</button>
+          <button type="button" class="preset-btn" data-size2="64">1″</button>
+          <button type="button" class="preset-btn" data-size2="96">1-1/2″</button>
+        </div>
+        <div class="hint" id="choke2Hint">1st stage listed above takes the initial drop from WHP; 2nd stage takes it down toward line pressure.</div>
+      </div>
+
+      <div class="panel-label" style="margin-top:26px;">Pressure</div>
+      <div class="field-group two-col">
+        <div>
+          <div class="field-row"><label for="pUp">Upstream (WHP)</label></div>
+          <input type="number" id="pUp" value="1200" min="0" step="10"> 
+          <div class="hint">psig</div>
+        </div>
+        <div>
+          <div class="field-row"><label for="pDown">Downstream</label></div>
+          <input type="number" id="pDown" value="120" min="0" step="10">
+          <div class="hint">psig — line/separator</div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <label>P₂ / P₁ ratio</label>
+          <span class="field-value" id="ratioVal">0.10</span>
+        </div>
+        <div class="ratio-bar-track">
+          <div class="ratio-bar-fill" id="ratioBar" style="width:10%; background:var(--ok);"></div>
+          <div class="ratio-threshold-mark" style="left:55%;"></div>
+        </div>
+        <div class="hint">Mark = ~0.55 critical-flow threshold. Below it, downstream pressure barely affects rate.</div>
+      </div>
+
+      <div id="multiphaseFluidGroup">
+        <div class="panel-label" style="margin-top:26px;">Fluid / Correlation</div>
+        <div class="field-group">
+          <div class="field-row"><label for="glr">Gas-liquid ratio</label></div>
+          <input type="number" id="glr" value="50" min="0" step="5">
+          <div class="hint">scf/bbl. Set to a small nonzero value (not 0) — the correlation is undefined for pure liquid.</div>
+        </div>
+        <div class="field-group">
+          <div class="field-row"><label for="correlation">Correlation</label></div>
+          <select id="correlation">
+            <option value="gilbert" selected>Gilbert (1954)</option>
+            <option value="ros">Ros (1960)</option>
+            <option value="baxendell">Baxendell (1957)</option>
+            <option value="achong">Achong (1961)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="singlephaseFluidGroup" style="display:none;">
+        <div class="panel-label" style="margin-top:26px;">Fluid</div>
+        <div class="field-group">
+          <div class="field-row">
+            <label for="waterWeight">Fluid weight</label>
+            <span class="field-value"><span id="waterWeightVal">5.5</span> ppg</span>
+          </div>
+          <input type="range" id="waterWeight" min="4.0" max="12.0" step="0.1" value="5.5">
+          <div class="hint">8.33 ppg fresh water · 8.5–9.0 typical produced/brine · aphron/aerated fluids can run 4–7 ppg. Note: the orifice equation treats fluid as a single incompressible phase — an aerated/aphron fluid is really gas-cut, so treat this as a rough estimate, not a calibrated rate.</div>
+        </div>
+        <div class="field-group">
+          <div class="field-row">
+            <label for="cd">Discharge coefficient (Cd)</label>
+            <span class="field-value" id="cdVal">0.85</span>
+          </div>
+          <input type="range" id="cd" min="0.60" max="0.95" step="0.01" value="0.85">
+          <div class="hint">0.80–0.90 typical for a sharp-edged choke bean. Calibrate against a known rate if possible.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel">
+      <div class="panel-label">Result</div>
+
+      <div class="status-strip">
+        <div class="status-light ok" id="statusLight"></div>
+        <div class="status-text" id="statusText"><strong>Critical flow</strong> — correlation valid as modeled.</div>
+      </div>
+
+      <div class="stage-readout" id="stageReadout" style="display:none;">
+        <span class="lbl">Solved intermediate pressure</span>
+        <span class="val" id="pMidVal">— psig</span>
+      </div>
+
+      <div class="readout-main">
+        <div class="value" id="mainRate">0.00</div>
+        <div class="unit" id="mainUnit">barrels per minute</div>
+      </div>
+
+      <div class="readout-secondary">
+        <div class="readout-chip">
+          <div class="val" id="rateHr">0</div>
+          <div class="lbl" id="chip1Label">bbl / hr</div>
+        </div>
+        <div class="readout-chip">
+          <div class="val" id="rateDay">0</div>
+          <div class="lbl" id="chip2Label">bbl / day</div>
+        </div>
+      </div>
+
+      <div class="formula-box">
+        <div class="fl">Formula in use</div>
+        <code id="formulaText">—</code>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footerNote">
+    Estimates from published empirical correlations (Gilbert, Ros, Baxendell, Achong) or the standard orifice equation — not a substitute for a calibrated flow meter. Correlations assume critical (sonic) flow; results near or above the P₂/P₁ threshold should be treated as approximate. Always verify against actual test data for your field and fluid.
+  </footer>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  const state = { mode: 'multiphase', doubleDrop: false, direction: 'rate' };
+
+  const correlations = {
+    gilbert:    { label: 'Gilbert (1954)',   A: 10.00, B: 0.546, C: 1.89 },
+    ros:        { label: 'Ros (1960)',       A: 17.40, B: 0.500, C: 2.00 },
+    baxendell:  { label: 'Baxendell (1957)', A: 9.56,  B: 0.546, C: 1.93 },
+    achong:     { label: 'Achong (1961)',    A: 3.82,  B: 0.650, C: 1.88 },
+  };
+  const CRIT_THRESHOLD = 0.55;
+  const MAX_S = 128; // 2 inches
+
+  const btnMulti = $('btn-multiphase');
+  const btnSingle = $('btn-singlephase');
+  const multiFluid = $('multiphaseFluidGroup');
+  const singleFluid = $('singlephaseFluidGroup');
+  const tagMode = $('tag-mode');
+  const tagFormula = $('tag-formula');
+
+  btnMulti.addEventListener('click', () => setMode('multiphase'));
+  btnSingle.addEventListener('click', () => setMode('single'));
+
+  function setMode(mode){
+    state.mode = mode;
+    btnMulti.classList.toggle('active', mode==='multiphase');
+    btnSingle.classList.toggle('active', mode==='single');
+    multiFluid.style.display = mode==='multiphase' ? 'block' : 'none';
+    singleFluid.style.display = mode==='single' ? 'block' : 'none';
+    tagMode.textContent = mode==='multiphase' ? 'MULTIPHASE' : 'SINGLE-PHASE';
+    refreshSolveTargetVisibility();
+    compute();
+  }
+
+  // ---- solve direction toggle ----
+  const btnSolveRate = $('btn-solve-rate');
+  const btnSolveSize = $('btn-solve-size');
+  const targetRateGroup = $('targetRateGroup');
+  btnSolveRate.addEventListener('click', () => setDirection('rate'));
+  btnSolveSize.addEventListener('click', () => setDirection('size'));
+
+  function setDirection(direction){
+    state.direction = direction;
+    btnSolveRate.classList.toggle('active', direction==='rate');
+    btnSolveSize.classList.toggle('active', direction==='size');
+    targetRateGroup.style.display = direction==='size' ? 'block' : 'none';
+    $('apertureCaption').textContent = direction==='size' ? 'solved bore diameter' : 'bore diameter';
+    refreshSolveTargetVisibility();
+    compute();
+  }
+
+  const targetRate = $('targetRate');
+  targetRate.addEventListener('input', () => {
+    $('targetRateVal').textContent = targetRate.value;
+    compute();
+  });
+
+  const solveTargetGroup = $('solveTargetGroup');
+  const solveTarget = $('solveTarget');
+  solveTarget.addEventListener('change', () => { updateLockUI(); compute(); });
+
+  function refreshSolveTargetVisibility(){
+    // The front/rear choice only makes sense for single-phase double drop (see note below).
+    solveTargetGroup.style.display = (state.direction==='size' && state.doubleDrop && state.mode==='single') ? 'block' : 'none';
+    updateLockUI();
+  }
+
+  function updateLockUI(){
+    const g1 = $('chokeSizeGroup');
+    const g2 = $('choke2Group');
+    const b1 = $('chokeSizeSolvedBadge');
+    const b2 = $('chokeSize2SolvedBadge');
+    let lock1 = false, lock2 = false;
+
+    if(state.direction === 'size'){
+      if(!state.doubleDrop){
+        lock1 = true; // the only bean, and it's the thing being solved
+      } else if(state.mode === 'multiphase'){
+        lock1 = true; // front always sets the rate in critical multiphase flow — it's the solved value
+      } else {
+        // single-phase double drop: whichever one the dropdown says we're solving
+        lock1 = solveTarget.value === 'front';
+        lock2 = solveTarget.value === 'rear';
+      }
+    }
+
+    g1.classList.toggle('locked', lock1);
+    g2.classList.toggle('locked', lock2);
+    b1.style.display = lock1 ? 'inline-block' : 'none';
+    b2.style.display = lock2 ? 'inline-block' : 'none';
+  }
+
+  // ---- choke size 1 ----
+  const chokeSize = $('chokeSize');
+  chokeSize.addEventListener('input', () => {
+    $('chokeSizeVal').textContent = chokeSize.value;
+    syncPresetHighlight('presetRow', 'size', chokeSize.value);
+    updateAperture();
+    compute();
+  });
+
+  // ---- choke size 2 (double drop) ----
+  const chokeSize2 = $('chokeSize2');
+  chokeSize2.addEventListener('input', () => {
+    $('chokeSize2Val').textContent = chokeSize2.value;
+    syncPresetHighlight('presetRow2', 'size2', chokeSize2.value);
+    compute();
+  });
+
+  function wirePresets(rowId, dataAttr, targetInput, labelSpanId, onAfter){
+    document.querySelectorAll(`#${rowId} .preset-btn`).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute(`data-${dataAttr}`);
+        targetInput.value = val;
+        $(labelSpanId).textContent = val;
+        syncPresetHighlight(rowId, dataAttr, val);
+        if(onAfter) onAfter();
+        compute();
+      });
+    });
+  }
+  function syncPresetHighlight(rowId, dataAttr, val){
+    document.querySelectorAll(`#${rowId} .preset-btn`).forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute(`data-${dataAttr}`) === String(Math.round(val)));
+    });
+  }
+  wirePresets('presetRow', 'size', chokeSize, 'chokeSizeVal', updateAperture);
+  wirePresets('presetRow2', 'size2', chokeSize2, 'chokeSize2Val');
+
+  // ---- double drop toggle ----
+  const doubleDropCheck = $('doubleDropCheck');
+  const choke2Group = $('choke2Group');
+  doubleDropCheck.addEventListener('change', () => {
+    state.doubleDrop = doubleDropCheck.checked;
+    choke2Group.style.display = state.doubleDrop ? 'block' : 'none';
+    refreshSolveTargetVisibility();
+    compute();
+  });
+
+  const waterWeight = $('waterWeight');
+  waterWeight.addEventListener('input', () => {
+    $('waterWeightVal').textContent = parseFloat(waterWeight.value).toFixed(1);
+    compute();
+  });
+
+  const cd = $('cd');
+  cd.addEventListener('input', () => {
+    $('cdVal').textContent = parseFloat(cd.value).toFixed(2);
+    compute();
+  });
+
+  ['pUp','pDown','glr'].forEach(id => $(id).addEventListener('input', compute));
+  $('correlation').addEventListener('change', compute);
+
+  function updateAperture(){
+    const size = parseFloat(chokeSize.value);
+    const inches = size/64;
+    $('chokeSizeInches').textContent = inches.toFixed(3) + '″';
+    const minR = 2.5, maxR = 24.5;
+    const r = minR + (maxR-minR) * (Math.min(size,MAX_S)/MAX_S);
+    $('apertureHole').setAttribute('r', r.toFixed(2));
+  }
+
+  // ---- orifice helper (single-phase), returns bbl/min for a given bore + deltaP ----
+  function orificeBblPerMin(S64, dPsi, ppg, Cd){
+    const dIn = S64/64;
+    const dM = dIn * 0.0254;
+    const areaM2 = Math.PI/4 * dM*dM;
+    const rho = ppg * 119.8264;
+    const dP_pa = Math.max(dPsi,0) * 6894.76;
+    const qM3s = (dP_pa > 0 && rho > 0) ? Cd * areaM2 * Math.sqrt(2*dP_pa/rho) : 0;
+    return qM3s * 60 / 0.158987;
+  }
+
+  function twoStageOrifice(S1, S2, pUp, pDown, ppg, Cd){
+    const d1In=S1/64, d2In=S2/64;
+    const A1=Math.PI/4*Math.pow(d1In*0.0254,2);
+    const A2=Math.PI/4*Math.pow(d2In*0.0254,2);
+    const w1=A1*A1, w2=A2*A2;
+    const pMid=(w1*pUp+w2*pDown)/(w1+w2);
+    const dPsi1=Math.max(pUp-pMid,0);
+    const bblPerMin=orificeBblPerMin(S1,dPsi1,ppg,Cd);
+    return {bblPerMin, pMid};
+  }
+
+  function bisect(fn, target, lo, hi, iters){
+    let a=lo, b=hi;
+    for(let i=0;i<iters;i++){
+      const mid=(a+b)/2;
+      if(fn(mid) < target) a=mid; else b=mid;
+    }
+    return (a+b)/2;
+  }
+
+  // ================= FORWARD PASSES (bean size -> rate) =================
+  function fwdMultiSingle(S, pUp, pDown, glr, c){
+    let bblPerDay = (pUp * Math.pow(S, c.C)) / (c.A * Math.pow(glr, c.B));
+    if(!isFinite(bblPerDay) || bblPerDay < 0) bblPerDay = 0;
+    const ratio = pUp > 0 ? Math.min((pDown+14.7)/(pUp+14.7), 1) : 0;
+    const critical = ratio <= CRIT_THRESHOLD;
+    const statusHTML = critical
+      ? '<strong>Critical flow</strong> — correlation valid as modeled.'
+      : '<strong>Subcritical flow</strong> — downstream pressure now matters; this estimate will run high.';
+    const formulaStr = `${c.label}
+Pwh = ${c.A} · Q · GLR^${c.B} / S^${c.C}
+Q (bbl/day) = Pwh · S^${c.C} / (${c.A} · GLR^${c.B})
+
+Pwh=${pUp} psig, S=${S}/64, GLR=${glr} scf/bbl
+Q = ${bblPerDay.toFixed(1)} bbl/day`;
+    return {bblPerDay, ratio, critical, statusHTML, formulaStr, pMid:null};
+  }
+
+  function fwdMultiDouble(S1, S2, pUp, pDown, glr, c){
+    let bblPerDay = (pUp * Math.pow(S1, c.C)) / (c.A * Math.pow(glr, c.B));
+    if(!isFinite(bblPerDay) || bblPerDay < 0) bblPerDay = 0;
+    const pMid = c.A * bblPerDay * Math.pow(glr, c.B) / Math.pow(S2, c.C);
+    const ratio1 = pUp > 0 ? Math.min((pMid+14.7)/(pUp+14.7),1) : 0;
+    const ratio2 = pMid > 0 ? Math.min((pDown+14.7)/(pMid+14.7),1) : 0;
+    const stage1Critical = ratio1 <= CRIT_THRESHOLD;
+    const stage2Critical = ratio2 <= CRIT_THRESHOLD;
+    const ratio = Math.max(ratio1, ratio2);
+    const critical = stage1Critical && stage2Critical && pMid >= pDown && pMid <= pUp;
+    let statusHTML;
+    if(critical){
+      statusHTML = '<strong>Both stages critical</strong> — 1st bean sets the rate, 2nd bean just takes the rest of the drop.';
+    } else if(pMid > pUp || pMid < pDown){
+      statusHTML = '<strong>Sizing conflict</strong> — 2nd stage is more restrictive than the 1st; swap bean sizes so stage 1 is the tighter (or equal) restriction.';
+    } else {
+      statusHTML = '<strong>One stage subcritical</strong> — beans are close in size or ΔP is low; treat rate as approximate.';
+    }
+    const formulaStr = `${c.label} — double drop, 2 stages
+Stage 1: Q = Pup · S1^${c.C} / (${c.A} · GLR^${c.B})
+Stage 2: Pmid = ${c.A} · Q · GLR^${c.B} / S2^${c.C}
+
+Pup=${pUp} psig, S1=${S1}/64, S2=${S2}/64, GLR=${glr} scf/bbl
+Q = ${bblPerDay.toFixed(1)} bbl/day
+Pmid solved = ${pMid.toFixed(0)} psig`;
+    return {bblPerDay, ratio, critical, statusHTML, formulaStr, pMid};
+  }
+
+  function fwdSingleSingle(S, pUp, pDown, ppg, Cd){
+    const dPsi = Math.max(pUp - pDown, 0);
+    const bblPerMin = orificeBblPerMin(S, dPsi, ppg, Cd);
+    const bblPerDay = bblPerMin * 1440;
+    const ratio = pUp > 0 ? Math.min((pDown+14.7)/(pUp+14.7),1) : 0;
+    const critical = ratio <= CRIT_THRESHOLD;
+    const statusHTML = critical
+      ? '<strong>High ΔP across bean</strong> — orifice model applies well here.'
+      : '<strong>Low ΔP across bean</strong> — flow is gentle/subcritical; the simple orifice model gets less accurate as ΔP shrinks.';
+    const dIn = S/64;
+    const formulaStr = `Orifice equation
+Q = Cd · A · √(2ΔP / ρ)
+
+d=${dIn.toFixed(3)}in, Cd=${Cd}, ΔP=${dPsi} psi, ρ=${ppg} ppg
+Q = ${bblPerMin.toFixed(3)} bbl/min`;
+    return {bblPerDay, ratio, critical, statusHTML, formulaStr, pMid:null};
+  }
+
+  function fwdSingleDouble(S1, S2, pUp, pDown, ppg, Cd){
+    const {bblPerMin, pMid} = twoStageOrifice(S1, S2, pUp, pDown, ppg, Cd);
+    const bblPerDay = bblPerMin * 1440;
+    const ratio = pUp > 0 ? Math.min((pDown+14.7)/(pUp+14.7),1) : 0;
+    const critical = true;
+    const statusHTML = `<strong>Two-stage split solved</strong> — stage 1 takes ${(pUp-pMid).toFixed(0)} psi, stage 2 takes ${(pMid-pDown).toFixed(0)} psi of the total drop.`;
+    const d1In=S1/64, d2In=S2/64;
+    const formulaStr = `Orifice, two stages in series
+Continuity: Q1 = Q2  →  Pmid = (A1²·Pup + A2²·Pdown) / (A1²+A2²)
+
+d1=${d1In.toFixed(3)}in, d2=${d2In.toFixed(3)}in, ρ=${ppg} ppg, Cd=${Cd}
+Pmid solved = ${pMid.toFixed(0)} psig
+Q = ${bblPerMin.toFixed(3)} bbl/min`;
+    return {bblPerDay, ratio, critical, statusHTML, formulaStr, pMid};
+  }
+
+  // ================= MAIN COMPUTE =================
+  function compute(){
+    const pUp = parseFloat($('pUp').value) || 0;
+    const pDown = parseFloat($('pDown').value) || 0;
+    const dd = state.doubleDrop;
+    const S1input = parseFloat(chokeSize.value);
+    const S2input = parseFloat(chokeSize2.value);
+
+    let result, sizeNote = '';
+
+    if(state.direction === 'rate'){
+      // ---------- normal forward direction ----------
+      if(state.mode === 'multiphase'){
+        const c = correlations[$('correlation').value];
+        tagFormula.textContent = c.label.split(' ')[0].toUpperCase() + ' ' + c.label.match(/\d+/)[0];
+        const glr = Math.max(parseFloat($('glr').value) || 0, 0.001);
+        result = dd ? fwdMultiDouble(S1input, S2input, pUp, pDown, glr, c)
+                     : fwdMultiSingle(S1input, pUp, pDown, glr, c);
+      } else {
+        tagFormula.textContent = dd ? 'ORIFICE ×2' : 'ORIFICE';
+        const ppg = parseFloat(waterWeight.value);
+        const Cd = parseFloat(cd.value);
+        result = dd ? fwdSingleDouble(S1input, S2input, pUp, pDown, ppg, Cd)
+                     : fwdSingleSingle(S1input, pUp, pDown, ppg, Cd);
+      }
+      renderRateResult(result, dd);
+
+    } else {
+      // ---------- solve bean size from a target rate ----------
+      const target = Math.max(parseFloat(targetRate.value) || 0, 0);
+
+      if(state.mode === 'multiphase'){
+        const c = correlations[$('correlation').value];
+        tagFormula.textContent = c.label.split(' ')[0].toUpperCase() + ' ' + c.label.match(/\d+/)[0];
+        const glr = Math.max(parseFloat($('glr').value) || 0, 0.001);
+        const targetBblDay = target*1440;
+        // Closed form: the controlling (front, or only) bean sets the rate in critical multiphase flow.
+        let sRaw = Math.pow((c.A * targetBblDay * Math.pow(glr,c.B)) / pUp, 1/c.C);
+        if(!isFinite(sRaw) || sRaw<=0) sRaw = 4;
+        const sRounded = Math.min(Math.max(Math.round(sRaw), 4), MAX_S);
+        chokeSize.value = sRounded;
+        $('chokeSizeVal').textContent = sRounded;
+        syncPresetHighlight('presetRow','size',sRounded);
+        updateAperture();
+
+        if(!dd){
+          result = fwdMultiSingle(sRounded, pUp, pDown, glr, c);
+        } else {
+          // Rear bean doesn't change rate here (Gilbert-type is downstream-independent while critical) —
+          // solve front for the target, then just check the rear you've got keeps stage 2 critical.
+          result = fwdMultiDouble(sRounded, S2input, pUp, pDown, glr, c);
+          if(result.pMid !== null){
+            const ratio2 = result.pMid>0 ? Math.min((pDown+14.7)/(result.pMid+14.7),1) : 0;
+            if(ratio2 > CRIT_THRESHOLD){
+              const minS2 = Math.pow((c.A * result.bblPerDay * Math.pow(glr,c.B) * CRIT_THRESHOLD) / pDown, 1/c.C);
+              sizeNote = `Rear bean (${S2input}/64) is too tight to stay critical at this rate — size it at ${Math.ceil(minS2)}/64 or larger. In critical multiphase flow the rear bean doesn't change the rate itself; it just needs to stay big enough to keep taking its share of the drop without choking on its own.`;
+            } else {
+              sizeNote = `Rear bean (${S2input}/64) stays critical at this rate — good. Rate is set entirely by the front bean; the rear just needs to comfortably clear the remaining pressure, which it does here.`;
+            }
+          }
+        }
+        result.formulaStr = `Solve S from target rate — ${c.label}
+S = (${c.A} · Q · GLR^${c.B} / Pwh) ^ (1/${c.C})
+
+Q target=${target} bbl/min (${targetBblDay.toFixed(0)} bbl/day), Pwh=${pUp} psig, GLR=${glr} scf/bbl
+S solved = ${sRaw.toFixed(1)}/64 → nearest whole bean = ${sRounded}/64`;
+
+      } else {
+        tagFormula.textContent = dd ? 'ORIFICE ×2' : 'ORIFICE';
+        const ppg = parseFloat(waterWeight.value);
+        const Cd = parseFloat(cd.value);
+
+        if(!dd){
+          const dPsi = Math.max(pUp-pDown,0);
+          const qM3s = target*0.158987/60;
+          const rho = ppg*119.8264;
+          const dP_pa = dPsi*6894.76;
+          let sRaw = 4;
+          if(dP_pa>0 && rho>0 && Cd>0){
+            const areaNeeded = qM3s/(Cd*Math.sqrt(2*dP_pa/rho));
+            const dM = Math.sqrt(4*areaNeeded/Math.PI);
+            sRaw = (dM/0.0254)*64;
+          }
+          const sRounded = Math.min(Math.max(Math.round(sRaw),4),MAX_S);
+          chokeSize.value = sRounded;
+          $('chokeSizeVal').textContent = sRounded;
+          syncPresetHighlight('presetRow','size',sRounded);
+          updateAperture();
+          result = fwdSingleSingle(sRounded, pUp, pDown, ppg, Cd);
+          result.formulaStr = `Solve d from target rate — Orifice
+d = √(4·A / π), where A = Q / (Cd·√(2ΔP/ρ))
+
+Q target=${target} bbl/min, ΔP=${dPsi} psi, ρ=${ppg} ppg, Cd=${Cd}
+d solved = ${(sRaw/64).toFixed(3)}in → nearest whole bean = ${sRounded}/64`;
+        } else {
+          const solveFront = solveTarget.value === 'front';
+          if(solveFront){
+            const fn = S1 => twoStageOrifice(S1, S2input, pUp, pDown, ppg, Cd).bblPerMin;
+            const sRaw = bisect(fn, target, 1, 300, 60);
+            const sRounded = Math.min(Math.max(Math.round(sRaw),4),MAX_S);
+            chokeSize.value = sRounded;
+            $('chokeSizeVal').textContent = sRounded;
+            syncPresetHighlight('presetRow','size',sRounded);
+            updateAperture();
+            result = fwdSingleDouble(sRounded, S2input, pUp, pDown, ppg, Cd);
+            sizeNote = `Solved with the rear bean fixed at ${S2input}/64.`;
+          } else {
+            const fn = S2 => twoStageOrifice(S1input, S2, pUp, pDown, ppg, Cd).bblPerMin;
+            const sRaw = bisect(fn, target, 1, 300, 60);
+            const sRounded = Math.min(Math.max(Math.round(sRaw),4),MAX_S);
+            chokeSize2.value = sRounded;
+            $('chokeSize2Val').textContent = sRounded;
+            syncPresetHighlight('presetRow2','size2',sRounded);
+            result = fwdSingleDouble(S1input, sRounded, pUp, pDown, ppg, Cd);
+            sizeNote = `Solved with the front bean fixed at ${S1input}/64.`;
+          }
+          result.formulaStr = `Solve size from target rate — orifice, 2 stages (numeric solve)
+Continuity: Q1 = Q2 at the solved intermediate pressure
+
+Q target=${target} bbl/min, Pup=${pUp} psig, Pdown=${pDown} psig, ρ=${ppg} ppg, Cd=${Cd}
+${sizeNote}`;
+        }
+      }
+      renderSizeResult(result, dd, sizeNote);
+    }
+  }
+
+  function renderShared(ratio, critical, statusHTML, pMid, dd){
+    $('ratioVal').textContent = ratio.toFixed(2);
+    const bar = $('ratioBar');
+    bar.style.width = (ratio*100).toFixed(1) + '%';
+    bar.style.background = critical ? 'var(--ok)' : 'var(--alert)';
+    $('statusLight').className = 'status-light ' + (critical ? 'ok' : 'warn');
+    $('statusText').innerHTML = statusHTML;
+    const stageReadout = $('stageReadout');
+    if(dd && pMid !== null){
+      stageReadout.style.display = 'flex';
+      $('pMidVal').textContent = pMid.toFixed(0) + ' psig';
+    } else {
+      stageReadout.style.display = 'none';
+    }
+  }
+
+  function renderRateResult(result, dd){
+    renderShared(result.ratio, result.critical, result.statusHTML, result.pMid, dd);
+    const bblPerMin = result.bblPerDay/1440;
+    const bblPerHr = result.bblPerDay/24;
+    $('mainUnit').textContent = 'barrels per minute';
+    $('chip1Label').textContent = 'bbl / hr';
+    $('chip2Label').textContent = 'bbl / day';
+    $('mainRate').textContent = bblPerMin.toFixed(bblPerMin<10?3:2);
+    $('rateHr').textContent = bblPerHr.toFixed(1);
+    $('rateDay').textContent = Math.round(result.bblPerDay).toLocaleString();
+    $('formulaText').textContent = result.formulaStr;
+  }
+
+  function renderSizeResult(result, dd, sizeNote){
+    renderShared(result.ratio, result.critical, result.statusHTML, result.pMid, dd);
+    const bblPerMin = result.bblPerDay/1440;
+    const sizeVal = dd && solveTargetGroup.style.display!=='none' && solveTarget.value==='rear'
+      ? chokeSize2.value : chokeSize.value;
+    const inches = (sizeVal/64).toFixed(3);
+    $('mainUnit').textContent = `/ 64″ recommended bean · ${inches}″ bore`;
+    $('chip1Label').textContent = 'confirmed rate (bbl/min)';
+    $('chip2Label').textContent = 'confirmed rate (bbl/day)';
+    $('mainRate').textContent = sizeVal;
+    $('rateHr').textContent = bblPerMin.toFixed(3);
+    $('rateDay').textContent = Math.round(result.bblPerDay).toLocaleString();
+    $('formulaText').textContent = result.formulaStr + (sizeNote && state.mode==='multiphase' && dd ? `
+
+${sizeNote}` : '');
+  }
+
+  updateAperture();
+  syncPresetHighlight('presetRow', 'size', chokeSize.value);
+  syncPresetHighlight('presetRow2', 'size2', chokeSize2.value);
+  refreshSolveTargetVisibility();
+  compute();
+
+  // ---- PWA: register service worker for installability + offline use ----
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.log('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
